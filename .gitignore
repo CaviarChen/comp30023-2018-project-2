@@ -1,3 +1,9 @@
+# program
+/certcheck
+
+# tmp file
+/test.csv
+
 
 # Created by https://www.gitignore.io/api/c,macos,linux,windows
 
