@@ -2,7 +2,7 @@ CC=gcc
 CPPFLAGS=-Wall -g -O3 -std=gnu99 -Wno-unused-result
 
 
-SRC=src/certcheck.o
+SRC=src/certcheck.o src/csv_helper.o
 TARGET=certcheck
 
 all: $(SRC)
