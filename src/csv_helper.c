@@ -1,4 +1,4 @@
-/* Simple HTTP1.0 Server (CSV File Helper)
+/* TLS Certificate Checker (CSV File Helper)
  * Name: Zijun Chen
  * StudentID: 813190
  * LoginID: zijunc3
