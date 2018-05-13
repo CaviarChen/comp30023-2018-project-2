@@ -37,6 +37,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
 
     #if DEBUG
     printf("\n ------ %s -------\n", filename);
+    printf(" ------ %s -------\n", domain);
     #endif
 
     //create BIO object to read certificate
@@ -131,7 +132,8 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
     printf("CommonName: %s\n", cert_cn);
     #endif
 
-    if(check_domain(domain, cert_cn)) return TRUE;
+    printf("%d\n", check_domain(domain, cert_cn));
+    //if(check_domain(domain, cert_cn)) return TRUE;
 
     // SAN
     GENERAL_NAMES *g_names;
@@ -150,15 +152,15 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
             printf("SAN: %s\n", buf);
             #endif
 
-            if(check_domain(domain, buf)) {
-                free(buf);
-                return TRUE;
-            }
+            printf("%d\n", check_domain(domain, buf));
+
+            // if(check_domain(domain, buf)) {
+            //     free(buf);
+            //     return TRUE;
+            // }
 
             free(buf);
-
         }
-
     }
 
     return FALSE;
@@ -174,5 +176,28 @@ char* astr_to_str(ASN1_STRING* a_str) {
 }
 
 int check_domain(const char* domain, const char* target_domain) {
-    return FALSE;
+    if (strlen(target_domain)<2) return FALSE;
+
+    if(target_domain[0]=='*') {
+        // wildcard
+        if (target_domain[1]!='.') {
+            // wildcard must start with '*.'
+            return FALSE;
+        }
+
+        int ld = strlen(domain) - 1;
+        int ltd = strlen(target_domain) - 1;
+
+        // checking backwards
+        while(ld>=0) {
+            if (domain[ld--] != target_domain[ltd--]) return FALSE;
+
+            // reachs '*' in target_domain, then domains match
+            if (ltd==0) return TRUE;
+        }
+        return FALSE;
+    }
+
+    // normal
+    return (strcmp(domain, target_domain)==0);
 }
