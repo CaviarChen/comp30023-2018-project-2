@@ -14,7 +14,20 @@ int main(int argc, char const *argv[]) {
 
     cert_init();
 
-    cert_verify_cert("./cert-file2.pem", "example.com");
+
+
+    void *csv = csv_open("sample_input.csv", "r");
+    while(1) {
+        char* row[2];
+        if (csv_get_row(csv, row, 2)!=2) break;
+
+        cert_verify_cert(row[0], row[1]);
+
+        csv_free_row(row);
+    }
+
+    csv_close(csv);
+
 
     return 0;
 }
