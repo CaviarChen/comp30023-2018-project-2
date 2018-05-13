@@ -8,9 +8,13 @@
 #include <stdlib.h>
 
 #include "csv_helper.h"
+#include "cert_helper.h"
 
 int main(int argc, char const *argv[]) {
 
+    cert_init();
+
+    cert_verify_cert("./cert-file2.pem", "example.com");
 
     return 0;
 }
