@@ -20,8 +20,12 @@
 #define FALSE 0
 #define TRUE 1
 
+#define PUBLICKEY_TYPE EVP_PKEY_RSA
+#define PUBLICKEY_LEN 2048
+
 int cert_verify_dates(X509 *cert, BIO *outbio);
 int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
+int cert_verify_publickey(X509 *cert);
 
 int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
@@ -72,7 +76,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
 
     cert_verify_dates(cert, outbio);
     cert_verify_domain(cert, outbio, domain);
-
+    cert_verify_publickey(cert);
 
 
     X509_free(cert);
@@ -162,6 +166,27 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
             free(buf);
         }
     }
+
+    return FALSE;
+}
+
+int cert_verify_publickey(X509 *cert) {
+    EVP_PKEY *publickey = X509_get_pubkey(cert);
+    if((publickey)&&(publickey->type==PUBLICKEY_TYPE)) {
+
+        #if DEBUG
+        printf("key len: %d \n", BN_num_bits(publickey->pkey.rsa->n));
+        #endif
+        if (BN_num_bits(publickey->pkey.rsa->n) >= PUBLICKEY_LEN) {
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    #if DEBUG
+    printf("Wrong key type \n");
+    #endif
 
     return FALSE;
 }
