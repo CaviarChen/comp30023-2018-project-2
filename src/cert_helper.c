@@ -22,11 +22,15 @@
 
 #define PUBLICKEY_TYPE EVP_PKEY_RSA
 #define PUBLICKEY_LEN 2048
+#define KEY_EXT_USAGE "TLS Web Server Authentication"
+
+#define BUFFER_LEN 1024
 
 int cert_verify_dates(X509 *cert, BIO *outbio);
 int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
 int cert_verify_publickey(X509 *cert);
 int cert_verify_constraints(X509 *cert);
+int cert_verify_keyusage(X509 *cert, BIO *outbio);
 
 int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
@@ -79,6 +83,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
     cert_verify_domain(cert, outbio, domain);
     cert_verify_publickey(cert);
     cert_verify_constraints(cert);
+    cert_verify_keyusage(cert, outbio);
 
 
     X509_free(cert);
@@ -211,6 +216,36 @@ int cert_verify_constraints(X509 *cert) {
 
     return FALSE;
 
+}
+
+int cert_verify_keyusage(X509 *cert, BIO *outbio) {
+    STACK_OF(ASN1_OBJECT) *objs = NULL;
+    objs = X509_get_ext_d2i(cert, NID_ext_key_usage, NULL, NULL);
+
+    if (objs) {
+        int count = sk_ASN1_OBJECT_num(objs);
+        for(int i=0; i<count; i++) {
+            ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(objs, i);
+
+            char buf[BUFFER_LEN];
+            OBJ_obj2txt(buf, BUFFER_LEN, obj, 0);
+
+            if (strcmp(buf, KEY_EXT_USAGE)==0) {
+
+                #if DEBUG
+                printf("Key usage: pass\n");
+                #endif
+
+                return TRUE;
+            }
+        }
+    }
+
+    #if DEBUG
+    printf("Key usage: fail\n");
+    #endif
+
+    return FALSE;
 }
 
 char* astr_to_str(ASN1_STRING* a_str) {
