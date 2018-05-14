@@ -30,7 +30,7 @@ int cert_verify_dates(X509 *cert, BIO *outbio);
 int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
 int cert_verify_publickey(X509 *cert);
 int cert_verify_constraints(X509 *cert);
-int cert_verify_keyusage(X509 *cert, BIO *outbio);
+int cert_verify_keyusage(X509 *cert);
 
 int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
@@ -73,17 +73,15 @@ int cert_verify_cert(const char* filename, const char* domain) {
 
     int flag = FALSE;
 
-    // if(cert_verify_dates(cert, outbio)) {
-    //     if(cert_verify_domain(cert, outbio, domain)) {
-    //         flag = TRUE;
-    //     }
-    // }
+    if (cert_verify_dates(cert, outbio) &&
+        cert_verify_domain(cert, outbio, domain) &&
+        cert_verify_publickey(cert) &&
+        cert_verify_constraints(cert) &&
+        cert_verify_keyusage(cert)) {
 
-    cert_verify_dates(cert, outbio);
-    cert_verify_domain(cert, outbio, domain);
-    cert_verify_publickey(cert);
-    cert_verify_constraints(cert);
-    cert_verify_keyusage(cert, outbio);
+        flag = TRUE;
+    }
+
 
 
     X509_free(cert);
@@ -91,6 +89,8 @@ int cert_verify_cert(const char* filename, const char* domain) {
 
     #if DEBUG
     BIO_free_all(outbio);
+
+    printf("Overall: %s\n", flag?"True":"False");
     #endif
 
     return flag;
@@ -143,8 +143,7 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
     printf("CommonName: %s\n", cert_cn);
     #endif
 
-    printf("%d\n", check_domain(domain, cert_cn));
-    //if(check_domain(domain, cert_cn)) return TRUE;
+    if(check_domain(domain, cert_cn)) return TRUE;
 
     // SAN
     GENERAL_NAMES *g_names;
@@ -163,12 +162,10 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
             printf("SAN: %s\n", buf);
             #endif
 
-            printf("%d\n", check_domain(domain, buf));
-
-            // if(check_domain(domain, buf)) {
-            //     free(buf);
-            //     return TRUE;
-            // }
+            if(check_domain(domain, buf)) {
+                free(buf);
+                return TRUE;
+            }
 
             free(buf);
         }
@@ -218,7 +215,7 @@ int cert_verify_constraints(X509 *cert) {
 
 }
 
-int cert_verify_keyusage(X509 *cert, BIO *outbio) {
+int cert_verify_keyusage(X509 *cert) {
     STACK_OF(ASN1_OBJECT) *objs = NULL;
     objs = X509_get_ext_d2i(cert, NID_ext_key_usage, NULL, NULL);
 

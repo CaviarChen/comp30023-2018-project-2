@@ -33,11 +33,6 @@ void remove_newline(char *str) {
 void csv_write_row(void* csv, char** row, int num_fields){
     FILE *fp = csv;
 
-    // move to a new line except first one
-    if (ftell(fp)!=0) {
-        fputs("\n", fp);
-    }
-
     for(int i=0; i<num_fields; i++) {
         fputs(row[i], fp);
 
@@ -45,6 +40,8 @@ void csv_write_row(void* csv, char** row, int num_fields){
             fputs(DELIMITER, fp);
         }
     }
+
+    fputs("\n", fp);
 }
 
 // read a row from the given csv file
