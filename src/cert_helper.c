@@ -26,6 +26,7 @@
 int cert_verify_dates(X509 *cert, BIO *outbio);
 int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
 int cert_verify_publickey(X509 *cert);
+int cert_verify_constraints(X509 *cert);
 
 int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
@@ -77,6 +78,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
     cert_verify_dates(cert, outbio);
     cert_verify_domain(cert, outbio, domain);
     cert_verify_publickey(cert);
+    cert_verify_constraints(cert);
 
 
     X509_free(cert);
@@ -189,6 +191,26 @@ int cert_verify_publickey(X509 *cert) {
     #endif
 
     return FALSE;
+}
+
+int cert_verify_constraints(X509 *cert) {
+    BASIC_CONSTRAINTS *bc;
+    bc = X509_get_ext_d2i(cert, NID_basic_constraints, NULL, NULL);
+    if((bc)&&(!bc->ca)) {
+
+        #if DEBUG
+        printf("CA: FALSE : pass\n");
+        #endif
+
+        return TRUE;
+    }
+
+    #if DEBUG
+    printf("CA: FALSE : fail\n");
+    #endif
+
+    return FALSE;
+
 }
 
 char* astr_to_str(ASN1_STRING* a_str) {
