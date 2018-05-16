@@ -22,7 +22,6 @@
 
 #define PUBLICKEY_TYPE EVP_PKEY_RSA
 #define PUBLICKEY_LEN 2048
-#define KEY_EXT_USAGE "TLS Web Server Authentication"
 
 #define BUFFER_LEN 1024
 
@@ -224,10 +223,7 @@ int cert_verify_keyusage(X509 *cert) {
         for(int i=0; i<count; i++) {
             ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(objs, i);
 
-            char buf[BUFFER_LEN];
-            OBJ_obj2txt(buf, BUFFER_LEN, obj, 0);
-
-            if (strcmp(buf, KEY_EXT_USAGE)==0) {
+            if (OBJ_obj2nid(obj)==NID_server_auth) {
 
                 #if DEBUG
                 printf("Key usage: pass\n");
