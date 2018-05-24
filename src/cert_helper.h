@@ -8,6 +8,7 @@
  #define CERT_HELPER_H
 
 void cert_init();
+void cert_free();
 
 int cert_verify_cert(const char* filename, const char* domain);
 

@@ -38,10 +38,17 @@ int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
 
 void cert_init() {
-    //initialise openSSL
+    // initialise openSSL
     OpenSSL_add_all_algorithms();
     ERR_load_BIO_strings();
     ERR_load_crypto_strings();
+}
+
+void cert_free() {
+    // clean up openSSL
+    ERR_free_strings();
+    EVP_cleanup();
+    ERR_remove_state(0);
 }
 
 int cert_verify_cert(const char* filename, const char* domain) {

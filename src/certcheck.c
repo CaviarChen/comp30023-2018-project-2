@@ -37,6 +37,7 @@ int main(int argc, char const *argv[]) {
     csv_close(csv);
     csv_close(csv_out);
 
+    cert_free();
 
     return 0;
 }
