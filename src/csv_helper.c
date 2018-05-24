@@ -11,6 +11,7 @@
 #define DELIMITER ","
 #define ROW_MAX_LEN 1024
 
+// remove the last newline char in a given string
 void remove_newline(char *str) {
     int pos = strlen(str) - 1;
     if (str[pos] == '\n') str[pos] = '\0';
@@ -59,7 +60,7 @@ int csv_get_row(void* csv, char** row, int max_fields) {
 
     int n = 0;
 
-    // separating row
+    // separate row
     char *token = strtok(raw_line, DELIMITER);
     while(token && n<max_fields) {
         row[n++] = token;

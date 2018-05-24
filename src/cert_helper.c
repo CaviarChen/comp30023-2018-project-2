@@ -37,20 +37,22 @@ int cert_verify_keyusage(X509 *cert);
 int check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
 
+
+// initialise openSSL
 void cert_init() {
-    // initialise openSSL
     OpenSSL_add_all_algorithms();
     ERR_load_BIO_strings();
     ERR_load_crypto_strings();
 }
 
+// clean up openSSL
 void cert_free() {
-    // clean up openSSL
     ERR_free_strings();
     EVP_cleanup();
     ERR_remove_state(0);
 }
 
+// check if a cert is valid
 int cert_verify_cert(const char* filename, const char* domain) {
 
     #if DEBUG
@@ -105,8 +107,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
     return flag;
 }
 
-
-
+// check not before and not after
 int cert_verify_dates(X509 *cert, BIO *outbio) {
 
     //debug info
@@ -141,10 +142,12 @@ int cert_verify_dates(X509 *cert, BIO *outbio) {
     return TRUE;
 }
 
+// check domain
 int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
 
     X509_NAME *cert_name = X509_get_subject_name(cert);
 
+    // check CN
     char cert_cn[256] = {};
     X509_NAME_get_text_by_NID(cert_name, NID_commonName, cert_cn, 256);
 
@@ -154,7 +157,7 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
 
     if(check_domain(domain, cert_cn)) return TRUE;
 
-    // SAN
+    // check SAN
     GENERAL_NAMES *g_names;
     g_names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
 
@@ -183,13 +186,16 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
     return FALSE;
 }
 
+// check public key len and type
 int cert_verify_publickey(X509 *cert) {
     EVP_PKEY *publickey = X509_get_pubkey(cert);
+    // check type
     if((publickey)&&(publickey->type==PUBLICKEY_TYPE)) {
 
         #if DEBUG
         printf("key len: %d \n", BN_num_bits(publickey->pkey.rsa->n));
         #endif
+        // check len
         if (BN_num_bits(publickey->pkey.rsa->n) >= PUBLICKEY_LEN) {
             return TRUE;
         }
@@ -204,9 +210,12 @@ int cert_verify_publickey(X509 *cert) {
     return FALSE;
 }
 
+// check constraints
 int cert_verify_constraints(X509 *cert) {
     BASIC_CONSTRAINTS *bc;
     bc = X509_get_ext_d2i(cert, NID_basic_constraints, NULL, NULL);
+
+    // have basic_constraints and CA: False
     if((bc)&&(!bc->ca)) {
 
         #if DEBUG
@@ -224,17 +233,19 @@ int cert_verify_constraints(X509 *cert) {
 
 }
 
+//check key usage
 int cert_verify_keyusage(X509 *cert) {
     STACK_OF(ASN1_OBJECT) *objs = NULL;
     objs = X509_get_ext_d2i(cert, NID_ext_key_usage, NULL, NULL);
 
     if (objs) {
         int count = sk_ASN1_OBJECT_num(objs);
+        // for each ext key usage
         for(int i=0; i<count; i++) {
             ASN1_OBJECT *obj = sk_ASN1_OBJECT_value(objs, i);
 
             if (OBJ_obj2nid(obj)==NID_server_auth) {
-
+                // find server auth
                 #if DEBUG
                 printf("Key usage: pass\n");
                 #endif
@@ -251,6 +262,7 @@ int cert_verify_keyusage(X509 *cert) {
     return FALSE;
 }
 
+// convert a ASN1_STRING to C String
 char* astr_to_str(ASN1_STRING* a_str) {
     char *buf = (char *)malloc((a_str->length + 1) * sizeof(char));
 
@@ -260,7 +272,11 @@ char* astr_to_str(ASN1_STRING* a_str) {
     return buf;
 }
 
+// check if a domain matches target domain
+// support wildcard except partial wildcard
 int check_domain(const char* domain, const char* target_domain) {
+
+    // too short to be a domain
     if (strlen(target_domain)<2) return FALSE;
 
     if(target_domain[0]==DOMAIN_ASTERISK) {
