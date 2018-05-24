@@ -23,6 +23,9 @@
 #define PUBLICKEY_TYPE EVP_PKEY_RSA
 #define PUBLICKEY_LEN 2048
 
+#define DOMAIN_ASTERISK '*'
+#define DOMAIN_DOT '.'
+
 #define BUFFER_LEN 1024
 
 int cert_verify_dates(X509 *cert, BIO *outbio);
@@ -253,9 +256,9 @@ char* astr_to_str(ASN1_STRING* a_str) {
 int check_domain(const char* domain, const char* target_domain) {
     if (strlen(target_domain)<2) return FALSE;
 
-    if(target_domain[0]=='*') {
+    if(target_domain[0]==DOMAIN_ASTERISK) {
         // wildcard
-        if (target_domain[1]!='.') {
+        if (target_domain[1]!=DOMAIN_DOT) {
             // wildcard must start with '*.'
             return FALSE;
         }
@@ -267,8 +270,14 @@ int check_domain(const char* domain, const char* target_domain) {
         while(ld>=0) {
             if (domain[ld--] != target_domain[ltd--]) return FALSE;
 
-            // reachs '*' in target_domain, then domains match
-            if (ltd==0) return TRUE;
+            // reachs '*' in target_domain
+            if (ltd==0) {
+                // make sure there is no '.' in the part that matched by '*'
+                for (int i=0; i<=ld; i++) {
+                    if (domain[i]==DOMAIN_DOT) return FALSE;
+                }
+                return TRUE;
+            };
         }
         return FALSE;
     }
