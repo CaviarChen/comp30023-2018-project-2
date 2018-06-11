@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -16,25 +17,20 @@
 #include <openssl/asn1.h>
 
 #include "debug_setting.h"
-
-#define FALSE 0
-#define TRUE 1
+#include "cert_helper.h"
 
 #define PUBLICKEY_TYPE EVP_PKEY_RSA
 #define PUBLICKEY_LEN 2048
 
-#define DOMAIN_ASTERISK '*'
-#define DOMAIN_DOT '.'
-
 #define BUFFER_LEN 1024
 
-int cert_verify_dates(X509 *cert, BIO *outbio);
-int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
-int cert_verify_publickey(X509 *cert);
-int cert_verify_constraints(X509 *cert);
-int cert_verify_keyusage(X509 *cert);
+bool cert_verify_dates(X509 *cert, BIO *outbio);
+bool cert_verify_domain(X509 *cert, BIO *outbio, const char* domain);
+bool cert_verify_publickey(X509 *cert);
+bool cert_verify_constraints(X509 *cert);
+bool cert_verify_keyusage(X509 *cert);
 
-int check_domain(const char* domain, const char* target_domain);
+bool check_domain(const char* domain, const char* target_domain);
 char* astr_to_str(ASN1_STRING* a_str);
 
 
@@ -53,7 +49,7 @@ void cert_free() {
 }
 
 // check if a cert is valid
-int cert_verify_cert(const char* filename, const char* domain) {
+bool cert_verify_cert(const char* filename, const char* domain) {
 
     #if DEBUG
     printf("\n ------ %s -------\n", filename);
@@ -82,7 +78,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
     outbio  = BIO_new_fp(stdout, BIO_NOCLOSE);
     #endif
 
-    int flag = FALSE;
+    int flag = false;
 
     if (cert_verify_dates(cert, outbio) &&
         cert_verify_domain(cert, outbio, domain) &&
@@ -90,7 +86,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
         cert_verify_constraints(cert) &&
         cert_verify_keyusage(cert)) {
 
-        flag = TRUE;
+        flag = true;
     }
 
 
@@ -108,7 +104,7 @@ int cert_verify_cert(const char* filename, const char* domain) {
 }
 
 // check not before and not after
-int cert_verify_dates(X509 *cert, BIO *outbio) {
+bool cert_verify_dates(X509 *cert, BIO *outbio) {
 
     //debug info
     #if DEBUG
@@ -130,20 +126,20 @@ int cert_verify_dates(X509 *cert, BIO *outbio) {
 
     ASN1_TIME_diff(&day, &sec, NULL, time);
 
-    if (day > 0 || sec > 0) return FALSE;
+    if (day > 0 || sec > 0) return false;
 
     // not after
     time = X509_get_notAfter(cert);
 
     ASN1_TIME_diff(&day, &sec, NULL, time);
 
-    if (day < 0 || sec < 0) return FALSE;
+    if (day < 0 || sec < 0) return false;
 
-    return TRUE;
+    return true;
 }
 
 // check domain
-int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
+bool cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
 
     X509_NAME *cert_name = X509_get_subject_name(cert);
 
@@ -155,7 +151,7 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
     printf("CommonName: %s\n", cert_cn);
     #endif
 
-    if(check_domain(domain, cert_cn)) return TRUE;
+    if(check_domain(domain, cert_cn)) return true;
 
     // check SAN
     GENERAL_NAMES *g_names;
@@ -176,18 +172,18 @@ int cert_verify_domain(X509 *cert, BIO *outbio, const char* domain) {
 
             if(check_domain(domain, buf)) {
                 free(buf);
-                return TRUE;
+                return true;
             }
 
             free(buf);
         }
     }
 
-    return FALSE;
+    return false;
 }
 
 // check public key len and type
-int cert_verify_publickey(X509 *cert) {
+bool cert_verify_publickey(X509 *cert) {
     EVP_PKEY *publickey = X509_get_pubkey(cert);
     // check type
     if((publickey)&&(publickey->type==PUBLICKEY_TYPE)) {
@@ -197,21 +193,21 @@ int cert_verify_publickey(X509 *cert) {
         #endif
         // check len
         if (BN_num_bits(publickey->pkey.rsa->n) >= PUBLICKEY_LEN) {
-            return TRUE;
+            return true;
         }
 
-        return FALSE;
+        return false;
     }
 
     #if DEBUG
     printf("Wrong key type \n");
     #endif
 
-    return FALSE;
+    return false;
 }
 
 // check constraints
-int cert_verify_constraints(X509 *cert) {
+bool cert_verify_constraints(X509 *cert) {
     BASIC_CONSTRAINTS *bc;
     bc = X509_get_ext_d2i(cert, NID_basic_constraints, NULL, NULL);
 
@@ -222,19 +218,19 @@ int cert_verify_constraints(X509 *cert) {
         printf("CA: FALSE : pass\n");
         #endif
 
-        return TRUE;
+        return true;
     }
 
     #if DEBUG
     printf("CA: FALSE : fail\n");
     #endif
 
-    return FALSE;
+    return false;
 
 }
 
 //check key usage
-int cert_verify_keyusage(X509 *cert) {
+bool cert_verify_keyusage(X509 *cert) {
     STACK_OF(ASN1_OBJECT) *objs = NULL;
     objs = X509_get_ext_d2i(cert, NID_ext_key_usage, NULL, NULL);
 
@@ -250,7 +246,7 @@ int cert_verify_keyusage(X509 *cert) {
                 printf("Key usage: pass\n");
                 #endif
 
-                return TRUE;
+                return true;
             }
         }
     }
@@ -259,7 +255,7 @@ int cert_verify_keyusage(X509 *cert) {
     printf("Key usage: fail\n");
     #endif
 
-    return FALSE;
+    return false;
 }
 
 // convert a ASN1_STRING to C String
@@ -274,16 +270,16 @@ char* astr_to_str(ASN1_STRING* a_str) {
 
 // check if a domain matches target domain
 // support wildcard except partial wildcard
-int check_domain(const char* domain, const char* target_domain) {
+bool check_domain(const char* domain, const char* target_domain) {
 
     // too short to be a domain
-    if (strlen(target_domain)<2) return FALSE;
+    if (strlen(target_domain)<2) return false;
 
-    if(target_domain[0]==DOMAIN_ASTERISK) {
+    if(target_domain[0]=='*') {
         // wildcard
-        if (target_domain[1]!=DOMAIN_DOT) {
+        if (target_domain[1]!='.') {
             // wildcard must start with '*.'
-            return FALSE;
+            return false;
         }
 
         int ld = strlen(domain) - 1;
@@ -291,20 +287,21 @@ int check_domain(const char* domain, const char* target_domain) {
 
         // checking backwards
         while(ld>=0) {
-            if (domain[ld--] != target_domain[ltd--]) return FALSE;
+            if (tolower(domain[ld--]) != tolower(target_domain[ltd--]))
+                    return false;
 
             // reachs '*' in target_domain
             if (ltd==0) {
                 // make sure there is no '.' in the part that matched by '*'
                 for (int i=0; i<=ld; i++) {
-                    if (domain[i]==DOMAIN_DOT) return FALSE;
+                    if (domain[i]=='.') return false;
                 }
-                return TRUE;
+                return true;
             };
         }
-        return FALSE;
+        return false;
     }
 
     // normal
-    return (strcmp(domain, target_domain)==0);
+    return (strcasecmp(domain, target_domain)==0);
 }

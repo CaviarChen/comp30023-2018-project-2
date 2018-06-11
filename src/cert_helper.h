@@ -4,12 +4,14 @@
  * LoginID: zijunc3
  */
 
- #ifndef CERT_HELPER_H
- #define CERT_HELPER_H
+#ifndef CERT_HELPER_H
+#define CERT_HELPER_H
+
+#include <stdbool.h>
 
 void cert_init();
 void cert_free();
 
-int cert_verify_cert(const char* filename, const char* domain);
+bool cert_verify_cert(const char* filename, const char* domain);
 
- #endif
+#endif
